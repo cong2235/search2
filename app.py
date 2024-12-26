@@ -4,7 +4,6 @@ from flask_cors import CORS
 from elasticsearch import Elasticsearch
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -20,38 +19,39 @@ es = Elasticsearch(
     http_auth=(os.getenv("ELASTICSEARCH_USER"), os.getenv("ELASTICSEARCH_PASSWORD"))
 )
 vectorizer = TfidfVectorizer()
-reduced_matrix = np.load('reduced_matrix.npy')
 
-def find_similar_sentences(input_sentence, vectorizer, reduced_matrix):
+def find_similar_sentences(input_sentence, vectorizer):
     input_vec = vectorizer.transform([input_sentence])
-    similarities = cosine_similarity(input_vec, reduced_matrix)
-    similar_indices = similarities.argsort()[0][-5:][::-1]
-    return similar_indices
-
-def get_sentence_by_index(output, idx):
-    return output[idx]
-
-def similar(input_sentence, sentence):
-    input_vec = vectorizer.transform([input_sentence])
-    sentence_vec = vectorizer.transform([sentence])
-    return cosine_similarity(input_vec, sentence_vec)[0][0]
+    # Tìm kiếm trong Elasticsearch
+    response = es.search(
+        index="sentences",
+        body={
+            "query": {
+                "match": {
+                    "sentence": input_sentence
+                }
+            }
+        }
+    )
+    # Lấy các câu và tính toán độ tương đồng
+    results = []
+    for hit in response['hits']['hits']:
+        sentence = hit['_source']['sentence']
+        sentence_vec = vectorizer.transform([sentence])
+        similarity = cosine_similarity(input_vec, sentence_vec)[0][0]
+        results.append({"sentence": sentence, "similarity": similarity})
+    return results
 
 @app.route('/search', methods=['POST'])
 def search_sentence():
     input_sentence = request.json['text']
-    similar_indices = find_similar_sentences(input_sentence, vectorizer, reduced_matrix)
+    results = find_similar_sentences(input_sentence, vectorizer)
     
-    found = False
-    results = []
-    for idx in similar_indices:
-        sentence = get_sentence_by_index(output, idx)
-        similarity = similar(input_sentence, sentence)
-        if similarity >= 0.8:
-            results.append({"sentence": sentence, "similarity": similarity})
-            found = True
+    # Lọc các câu có độ tương đồng >= 0.8
+    filtered_results = [result for result in results if result['similarity'] >= 0.8]
 
-    if found:
-        return jsonify({"input_sentence": input_sentence, "results": results})
+    if filtered_results:
+        return jsonify({"input_sentence": input_sentence, "results": filtered_results})
     else:
         return jsonify({"input_sentence": input_sentence, "results": "No similar sentence found."})
 
