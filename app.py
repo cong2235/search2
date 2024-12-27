@@ -18,7 +18,7 @@ es = Elasticsearch(
 )
 
 def find_similar_sentences(input_sentence):
-    # Tìm kiếm trong Elasticsearch
+    input_vec = vectorizer.transform([input_sentence])
     response = es.search(
         index="sentences",
         body={
@@ -29,12 +29,12 @@ def find_similar_sentences(input_sentence):
             }
         }
     )
-    # Lấy các câu và tính toán độ tương đồng
     results = []
     for hit in response['hits']['hits']:
         sentence = hit['_source']['sentence']
-        score = hit['_score']
-        results.append({"sentence": sentence, "score": score})
+        sentence_vec = vectorizer.transform([sentence])
+        similarity = cosine_similarity(input_vec, sentence_vec)[0][0]
+        results.append({"sentence": sentence, "similarity": similarity})
     return results
 
 @app.route('/search', methods=['POST'])
