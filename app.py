@@ -49,9 +49,9 @@ def search_sentence():
         print(f"Filtered results: {filtered_results}")
 
         if filtered_results:
-            return jsonify({"input_sentence": input_sentence, "results": filtered_results})
+            return jsonify({"input_sentence": input_sentence, "text": filtered_results})
         else:
-            return jsonify({"input_sentence": input_sentence, "results": "No similar sentence found."})
+            return jsonify({"input_sentence": input_sentence, "text": "No similar sentence found."})
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
