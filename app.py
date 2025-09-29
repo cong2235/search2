@@ -6,12 +6,10 @@ from elasticsearch import Elasticsearch
 app = Flask(__name__)
 CORS(app)
 
-# Đặt các biến môi trường trực tiếp trong mã
 os.environ["ELASTICSEARCH_HOST"] = "https://d93143eb81aa40ae9b186eeee81a1adc.us-central1.gcp.cloud.es.io"
 os.environ["ELASTICSEARCH_USER"] = "elastic"
 os.environ["ELASTICSEARCH_PASSWORD"] = "YgZyYW1VLobvLzpWvVup0ZwE"
 
-# Sử dụng các biến môi trường để khởi tạo Elasticsearch client
 es = Elasticsearch(
     hosts=[os.getenv("ELASTICSEARCH_HOST")],
     http_auth=(os.getenv("ELASTICSEARCH_USER"), os.getenv("ELASTICSEARCH_PASSWORD"))
@@ -44,7 +42,6 @@ def search_sentence():
         print(f"Received input: {input_sentence}")
         results = find_similar_sentences(input_sentence)
         
-        # Lọc các câu có điểm số >= 0.8 (tùy chỉnh ngưỡng này theo yêu cầu của bạn)
         filtered_results = [result for result in results if result['score'] >= 0.8]
         print(f"Filtered results: {filtered_results}")
 
@@ -58,3 +55,4 @@ def search_sentence():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
